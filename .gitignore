@@ -1,0 +1,4 @@
+node_modules/
+dist/
+data/sections.json
+data/cavalry-docs.json

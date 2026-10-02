@@ -13,7 +13,7 @@ A reference on Cavalry (https://cavalry.studio): what it is, its features, how i
 - It is **real-time and GPU-accelerated**: the viewport plays back as you edit, and rendering uses Skia (custom shaders are written in SkSL).
 - It is **data-driven**: CSV, Excel (.xlsx), Google Sheets and (from 2.8) Canva Sheets can drive any attribute.
 - **History:** made by Scene Group, which was founded in 2019 by Chris Hardcastle (CEO), Ian Waters (CTO) and Adam Jenns (CMO). They came from the London/Manchester studio Mainframe and earlier built **MASH** for Maya, which Autodesk acquired in 2015. Cavalry 1.0 shipped in Aug 2020, and 2.0 followed in Feb 2024.
-- **Canva acquired Cavalry on 24 Feb 2026.** From **2.7 (16 Apr 2026)**, all former "Professional" features are **free for individuals, including commercial use**. Studios that need SSO or Enterprise features (for example the CLI) need a paid Canva Enterprise plan. Older reviews that list "Free vs Pro" limits (1080p cap, no Google Sheets, no Lottie) are out of date.
+- **Canva acquired Cavalry on 24 Feb 2026.** From **2.7 (16 Apr 2026)**, all former "Professional" features are **free for individuals, including commercial use**. Studios that need SSO need a paid Canva Enterprise plan. Older reviews that list "Free vs Pro" limits (1080p cap, no Google Sheets, no Lottie) are out of date.
 
 ### System requirements (from secondary sources)
 - macOS 12+ (Intel and Apple silicon). Windows 10+ (Intel or AMD; Windows ARM runs under Prism emulation and is slower).
@@ -84,11 +84,12 @@ Spreadsheet and Spreadsheet Lookup, String Generators (including the Formatted S
 ### Import and export
 - **Import:** SVG (gradients, opacity, text and clipping masks since 2.8), images and image sequences, video (with audio tracks from 2.5; ProRes is hardware-decoded on macOS), audio, fonts, Affinity `.af` (2.8), and spreadsheets. An After Effects plugin called "Cavalry Importer" (third-party) brings Cavalry scenes into AE.
 - **Export (Render Manager / Render Queue):** MP4/MOV (H.264, ProRes; hardware-accelerated MP4 on macOS), WebM (including AV1 from 2.5), GIF (back in 2.3), PNG/EXR sequences (alpha), SVG, PDF, **Lottie (.json)**, and audio. You can render several outputs at once, and file names use **render tokens**. **Render Scripts** (setup, pre-render and post-render JS) let you automate around a render.
-- **Cavalry CLI** (Enterprise): `cavalry-cli render [OPTIONS] <scene>` with `-f/--frame`, `-s/--startFrame`, `-e/--endFrame`, `-p/--padding`, `-n/--name`, and `-d/--directory`. It renders headless with no UI.
+- **Cavalry CLI** (**legacy: the official docs say it is not available in Cavalry 2.7 or above**; it was Enterprise-only): `cavalry-cli render [OPTIONS] <scene>` with `-f/--frame`, `-s/--startFrame`, `-e/--endFrame`, `-p/--padding`, `-n/--name`, and `-d/--directory`. It renders headless with no UI.
 - **Cavalry Player** (desktop) and the **Web Player** (a WebAssembly runtime, in beta). The Web Player plays `.cv` scenes in a browser, and its JS API can change layer attributes live, for interactive or data-driven web graphics.
 
 ### AI (2.8, 30 Sep 2026)
 - **Built-in MCP support**, so AI assistants such as Claude can automate Cavalry from natural-language instructions. The docs page is "AI Automation with Claude" (https://cavalry.studio/docs/tips/ai-automation-with-claude/).
+  - **How the official setup works** (from the "AI Automation with Claude" page): download `cavalry-mcp-server.zip` (the "Cavalry by Canva" extension), unzip it into Claude Desktop's Extensions folder, enable it under Settings > Extensions, and turn on **Enable MCP Server** in Cavalry's Preferences. Both apps must be running. A directory connector is "coming soon". Only Claude is supported, it needs macOS 11+, and it is not available in China. The docs do **not** describe the extension's tools or the protocol it uses on the Cavalry port. Advertised uses: bulk connections, renaming layers, and generating reusable UI scripts.
   - Turn it on in **Preferences > MCP Server**: check *Enable MCP Server* and set the *MCP Server Port*. Cavalry then talks to an external MCP server over that port. (Source: Preferences docs; see [cavalry-ui-reference.md](cavalry-ui-reference.md).)
 - **AI Studio window**: background removal for video, vector generation, and splitting images into layers.
 
@@ -152,7 +153,7 @@ Right-click an attribute and choose **Copy Scripting Path** (case-sensitive), **
 5. **Character work.** Rubber Hose limbs, Lattice and Four Point Warp, Mesh Shape and Rig Control.
 6. **2.5D scenes.** Add a Camera (Freeform or Look At), set layers' Z depth, add Camera Guides and motion blur.
 7. **Export for web and apps.** Lottie for UI animation, SVG or WebM for the web, and the Web Player for interactive graphics. For video, use ProRes or PNG/EXR sequences for compositing in AE, Nuke or Resolve.
-8. **Automation.** UI scripts and Render Scripts, the CLI for headless batch rendering (Enterprise), and MCP for AI-driven edits.
+8. **Automation.** UI scripts, Render Scripts, Dynamic Rendering for batch variants, and MCP for AI-driven edits. The headless CLI is legacy and not available from 2.7.
 
 ---
 
@@ -211,7 +212,7 @@ Right-click an attribute and choose **Copy Scripting Path** (case-sensitive), **
 - **Expecting colour management in Lottie, SVG or GIF.** They are always sRGB.
 - **Judging final quality from the Viewport.** Viewport Quality resets to High each session, and render quality is a separate setting.
 - **Leaving unused comps and assets in the scene.** Use Reduce Scene.
-- **Relying on old feature-tier information.** Since 2.7 everything for individuals is free. Only the Enterprise items (CLI, SSO) are gated.
+- **Relying on old feature-tier information.** Since 2.7 everything for individuals is free. Only Enterprise items such as SSO are gated. The CLI is legacy and not available from 2.7.
 - **Scripting gotchas:** WebClient calls block, so long requests freeze the UI. Port 8080 conflicts with Stallion and other tools. Bridge scripts stop when their window closes. Some features cannot be scripted (see §4).
 - **Letting an AI agent edit a scene while a human is editing it** without a revision or conflict check.
 
