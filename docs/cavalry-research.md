@@ -37,12 +37,14 @@ A reference on Cavalry (https://cavalry.studio): what it is, its features, how i
 | **Components** | A Component Shape groups layers and exposes chosen attributes as one simple custom node. |
 | **Control Centre** | Brings a Composition's key attributes into one panel. Use it for rigs and client hand-offs. |
 | **Assets** | Imported footage, images, SVG, audio, fonts, spreadsheets, and (from 2.5) other `.cv` scenes as references, plus (from 2.8) Affinity `.af` files. They live in the Assets Window, which supports Smart Folders. |
+| **Files** | A `.cv` scene is saved as **compact JSON**. A `.cvc` holds exported selected layers. A Project uses `projectDescription.json`, plus a `path-to-project` file next to each scene. See [cavalry-ui-reference.md](cavalry-ui-reference.md). |
 
 ### Main UI windows
 - **Viewport.** Real-time preview. Multi-viewport since 2.3. Quality settings trade fidelity for speed. A 3D-like **Manipulator** and editable motion paths arrived in 2.6.
 - **Scene Window.** The layer tree, plus the **Time Editor** (keyframes and clips) and the **Graph Editor** (curves). Only animated attributes appear in the Scene Window.
 - **Attribute Editor.** The main window for editing values, setting keyframes and making connections.
-- **Dependency Graph** (2.4+). An interactive node/schematic view of a Composition's connections.
+- **Dependency Graph** (2.4+, also called the **Flow Graph**). An interactive node/schematic view of a Composition's connections.
+- **JavaScript Console**, **Scene Statistics**, **Mesh Explorer**, **Command Search**, **Shortcut Manager**, **Shelf**, **Tag Window**, Glyph Browser and Audio Monitor. The full menu-by-menu list is in [cavalry-ui-reference.md](cavalry-ui-reference.md).
 - **Assets Window**, **Render Manager**, **JavaScript Editor**, **Log Window**, **Preferences**, **AI Studio** (2.8).
 
 ---
@@ -168,9 +170,13 @@ Cavalry uses **JavaScript** in several places, each with a different API surface
 **Data**
 - Clean the spreadsheet first (headers, types, no merged cells) and keep one column per Spreadsheet Utility.
 - Use the Formatted String Generator and render tokens to name versioned outputs.
-- Store the data file next to the scene, or use Export as Project, so links do not break.
+- **Set a Project (Project Settings) before importing anything.** Without one, every asset path is absolute. Cavalry Player needs `path-to-project` for scenes that use assets, and the CLI benefits from it.
+- Use **Increment and Save** with a counter in the file name (`shot_001.cv`) to keep versions.
+- Use Export as Project (check font licences) to archive or hand off work.
+- Smart Folders plus a Spreadsheet or String Array, driven by the Render Manager's **Dynamic Index**, give you one render per data row.
 
 **Performance**
+- Swap heavy video for **image sequences**, which load faster.
 - Use **Skip Invisible Duplicates** on heavy Duplicators, lower Viewport Quality while working, and set RAM caps for image and video caches in Preferences.
 - Prefer native Behaviours over JavaScript Layers for per-frame maths. JS runs on every evaluation (this is the author's reasoning, not documented).
 - Use **File > Reduce Scene** before you hand off or archive.
@@ -193,7 +199,12 @@ Cavalry uses **JavaScript** in several places, each with a different API surface
 - **Wiring several columns into one Spreadsheet Utility.** It outputs one column.
 - **Huge Duplicator counts or particle systems at full viewport quality**, nested Duplicators without Skip Invisible, and unlimited caches. All of these slow playback badly.
 - **Unseeded randomness** that changes when you rebuild the scene, or "magic numbers" buried deep in a rig instead of exposed controls.
-- **Absolute asset paths and loose files**, which break on another machine. Use Export as Project.
+- **Working without a Project**, which leaves absolute asset paths and loose files that break on another machine, in Player and in the CLI. Use Project Settings and Export as Project.
+- **Renaming folder paths in Project Settings by accident.** This renames the real folders on disk.
+- **Using Nulls or Falloffs as helpers in scenes that will be Referenced.** They do not appear there; use Guide Layers.
+- **Naming separate images `img_1.png`, `img_2.png`** inside Smart Folders, so they are read as a sequence. Nesting Smart Folders deeper than 5 levels.
+- **Expecting colour management in Lottie, SVG or GIF.** They are always sRGB.
+- **Judging final quality from the Viewport.** Viewport Quality resets to High each session, and render quality is a separate setting.
 - **Leaving unused comps and assets in the scene.** Use Reduce Scene.
 - **Relying on old feature-tier information.** Since 2.7 everything for individuals is free. Only the Enterprise items (CLI, SSO) are gated.
 - **Scripting gotchas:** WebClient calls block, so long requests freeze the UI. Port 8080 conflicts with Stallion and other tools. Bridge scripts stop when their window closes. Some features cannot be scripted (see §4).
