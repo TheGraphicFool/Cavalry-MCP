@@ -89,6 +89,7 @@ Spreadsheet and Spreadsheet Lookup, String Generators (including the Formatted S
 
 ### AI (2.8, 30 Sep 2026)
 - **Built-in MCP support**, so AI assistants such as Claude can automate Cavalry from natural-language instructions. The docs page is "AI Automation with Claude" (https://cavalry.studio/docs/tips/ai-automation-with-claude/).
+  - Turn it on in **Preferences > MCP Server**: check *Enable MCP Server* and set the *MCP Server Port*. Cavalry then talks to an external MCP server over that port. (Source: Preferences docs; see [cavalry-ui-reference.md](cavalry-ui-reference.md).)
 - **AI Studio window**: background removal for video, vector generation, and splitting images into layers.
 
 ---
@@ -104,7 +105,11 @@ Cavalry uses **JavaScript** in several places, each with a different API surface
 | **SkSL Shader / SkSL Filter** | SkSL (Skia's GLSL dialect) | Custom GPU shading. |
 | **Render Scripts** | `api.` | Setup, pre-render and post-render hooks. |
 
+### Finding exact identifiers in the UI
+Right-click an attribute and choose **Copy Scripting Path** (case-sensitive), **Copy Layer Id** or **Copy Generator Type**. In the Viewport, right-click and choose **Copy as JavaScript** (gives `cavalry.Path` code) or Copy as SVG. Attribute Expressions use **ExprTk** syntax (`clamp(-45, value, 45)`), and so does custom Magic Easing (with `x` from 0 to 1).
+
 ### Key `api.` functions (from the docs and examples)
+- `api.primitive("rectangle")` creates a primitive (seen in the docs' snippet example).
 - `api.create(type, name?)` creates a layer, e.g. `api.create("textShape", "Bouncy Text")`. It returns a layer ID such as `basicShape#1`.
 - `api.set(layerId, {attr: value, ...})` sets many attributes at once, e.g. `{"fontSize": 72, "material.materialColor": "#ff0000"}`.
 - `api.get(layerId, attrPath)`, e.g. `api.get("basicShape#1", "position")`.
