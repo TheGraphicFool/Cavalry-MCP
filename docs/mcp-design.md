@@ -14,8 +14,8 @@ So driving Cavalry from Claude is already Canva's job. This project should do wh
 An agent writing Cavalry scripts needs exact API signatures, attribute paths and caveats. The scripting reference is huge: `api-module` is about 110k characters and `script-uis` about 71k. Serving whole pages wastes context, so this server:
 
 1. **Indexes a local dump of the official docs** (`data/cavalry-docs.json`, which is not committed; the one used here had 534 pages, fetched 2026-10-02) into **3,112 heading-level sections**. It splits at h2–h4. h5 and h6 headings and fenced code stay inside their section, so `#` lines in code are never treated as headings.
-2. **Recognises scripting symbols** on the scripting reference pages (`api`, `cavalry`, `ctx`, `def`, `ui`, `render` and `webPlayer` namespaces): **611 symbols**, each its own section, with the anchor set to the lowercase function name (e.g. `api-module#getmagiceasing`, which matches how the release notes link to it).
-3. **Exposes four read-only tools:**
+2. **Recognises scripting symbols** on the scripting reference pages (`api`, `cavalry`, `ctx`, `def`, `ui`, `render`, `web` and `webPlayer` namespaces): **607 symbols**, each its own section, with the anchor set to the lowercase function name (e.g. `api-module#getmagiceasing`, which matches how the release notes link to it).
+3. **Exposes five read-only tools and three prompt templates.** The full list is in [CAPABILITIES.md](CAPABILITIES.md).
 
 | Tool | Purpose |
 |---|---|
@@ -23,6 +23,7 @@ An agent writing Cavalry scripts needs exact API signatures, attribute paths and
 | `read_doc(ref, offset?, max_chars?)` | One section, by section id, page id (returns the whole page) or docs URL with `#anchor`. Paged by character offset, breaking at paragraph boundaries; the default is 8,000 characters. |
 | `lookup_api(name, module?)` | `api.create`, `ctx.index`, `getMagicEasing`… returns the full entry (signature, text, examples). Falls back to partial matches. |
 | `get_outline(page?, area?)` | A page's section list (ids, sizes, symbols), or the list of pages. |
+| `validate_script(code, context?)` | Static check against the docs: invented members, wrong case, and namespaces used outside their context. Raises one error across the docs' 397 examples, and that one is correct. |
 
 The largest single section is now about 35k characters (the Context concepts intro), versus 110k for a whole page. Paging covers the rest.
 
@@ -30,9 +31,9 @@ The largest single section is now about 35k characters (the Context concepts int
 Only worth doing where it adds something to the official extension. Options:
 - **A. Docs only (current).** Use it alongside "Cavalry by Canva" in the same Claude session: the official server acts, this one supplies accurate API knowledge. Lowest risk and no overlap.
 - **B. Own bridge for ≤ 2.7 and other MCP clients.** Add a Cavalry UI script that runs `api.WebServer` on localhost and executes posted JS, plus `run_script`, `get_scene` and `render_frame` tools. This is the pattern used by community bridges and Stallion. Use a port other than 8080 (Stallion uses it) and other than the MCP Server Port. Run raw-script execution behind an opt-in flag, and use a revision check so the agent doesn't overwrite edits a person is making at the same time. **This can't be tested in this cloud container (no Cavalry), so it needs a local test pass.**
-- **C. Script and tool authoring helpers** that need no live connection: lint generated scripts against the indexed API (unknown `api.*` calls, `api.` used inside JS Layers where only `ctx.` and `cavalry.` exist), and templates for script UIs, render scripts and SkSL.
+- **C. Script and tool authoring helpers** (*done in 0.2: `validate_script` plus prompt templates*) that need no live connection: lint generated scripts against the indexed API (unknown `api.*` calls, `api.` used inside JS Layers where only `ctx.` and `cavalry.` exist), and templates for script UIs, render scripts and SkSL.
 
-My recommendation: keep **A**, and do **C** next. It builds directly on the index and supports the official server's "create a custom tool" use case. Only take on **B** if users on older versions, or clients other than Claude, need it.
+**Status:** A and C are built. **B** is still open. It builds directly on the index and supports the official server's "create a custom tool" use case. Only take on **B** if users on older versions, or clients other than Claude, need it.
 
-## Updating the docs
-Replace `data/cavalry-docs.json` with a newer dump in the same shape (`{source, fetched, pageCount, pages:[{url,path,title,breadcrumbs,markdown}]}`) and run `npm run build`.
+## Docs privacy
+The docs dump is never committed. The server reads it at startup from `--docs`, `CAVALRY_DOCS`, or the git-ignored `data/cavalry-docs.json`, and indexes it in memory in about 0.4 s. To update, replace the file and restart Claude.

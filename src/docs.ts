@@ -26,7 +26,10 @@ export class CavalryDocs {
   private byId = new Map<string, Section>();
   private byPage = new Map<string, Section[]>();
 
-  constructor(readonly sections: Section[]) {
+  constructor(
+    readonly sections: Section[],
+    readonly meta: { fetched?: string; source?: string } = {},
+  ) {
     this.index = new SearchIndex(sections);
     for (const s of sections) {
       this.byId.set(s.id, s);
@@ -36,13 +39,11 @@ export class CavalryDocs {
     }
   }
 
-  static fromSectionsFile(path: string): CavalryDocs {
-    return new CavalryDocs(JSON.parse(readFileSync(path, "utf8")) as Section[]);
-  }
-
+  /** Loads a docs dump: {source, fetched, pages:[{url, path, title, breadcrumbs, markdown}]}. */
   static fromDumpFile(path: string): CavalryDocs {
-    const dump = JSON.parse(readFileSync(path, "utf8")) as { pages: DocPage[] };
-    return new CavalryDocs(splitPages(dump.pages));
+    const dump = JSON.parse(readFileSync(path, "utf8")) as { source?: string; fetched?: string; pages: DocPage[] };
+    if (!Array.isArray(dump.pages)) throw new Error(`${path} is not a Cavalry docs dump (no "pages" array).`);
+    return new CavalryDocs(splitPages(dump.pages), { fetched: dump.fetched, source: dump.source });
   }
 
   get pageCount(): number {

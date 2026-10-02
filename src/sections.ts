@@ -23,7 +23,7 @@ export interface Section {
   heading: string;
   /** Scripting symbol for signature headings, e.g. "create" for "create(layerType:string, ...)". */
   symbol?: string;
-  /** Scripting namespace of the page the symbol belongs to (api, cavalry, ctx, def, ui, render, webPlayer). */
+  /** Scripting namespace of the page the symbol belongs to (api, cavalry, ctx, def, ui, render, web, webPlayer). */
   module?: string;
   content: string;
 }
@@ -37,7 +37,7 @@ const MODULE_BY_PAGE: Record<string, string> = {
   "tech-info/scripting/context-module": "ctx",
   "tech-info/scripting/deformer-module": "def",
   "tech-info/scripting/script-uis": "ui",
-  "tech-info/scripting/web-apis": "api",
+  "tech-info/scripting/web-apis": "web",
   "tech-info/scripting/render-scripts": "render",
   "web-player/api": "webPlayer",
 };

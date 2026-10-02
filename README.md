@@ -1,33 +1,34 @@
 # Cavalry-MCP
 
-An MCP server that gives AI assistants **section-level access to the [Cavalry](https://cavalry.studio) documentation**. The 534 doc pages are split by heading into about 3,100 sections, so an assistant can fetch one function (`api.create`) or one topic (Lottie unsupported features) instead of a whole page. The API Module page alone is about 110k characters.
+An MCP server that gives Claude (and other MCP clients) **accurate, section-level access to the [Cavalry](https://cavalry.studio) documentation**, and **checks Cavalry JavaScript** before you run it.
 
-It complements Canva's official "Cavalry by Canva" MCP extension, which drives the app (Cavalry 2.8+). See [docs/mcp-design.md](docs/mcp-design.md).
+- **Section-level docs:** 534 pages split into 3,112 sections, so Claude reads one function (`api.connect`) or one topic (Lottie unsupported features) rather than whole pages. The API Module page alone is about 110k characters.
+- **API lookup:** 607 scripting entries across `api`, `cavalry`, `ctx`, `def`, `ui`, `render`, `web` and `webPlayer`.
+- **Script checking:** `validate_script` flags invented functions, wrong letter case, and namespaces used where they don't exist (e.g. `api.*` inside a JavaScript Layer).
+- **Prompt templates** for writing scripts, explaining features, and planning procedural setups.
+- **Private docs:** the docs dump stays on your machine and is never committed. Point the server at it with `--docs`.
 
-## Tools
-- `search_docs`: ranked search over sections, optionally limited to an area (`scripting`, `nodes`, `ui`, …).
-- `read_doc`: read a section by id, page id or docs URL, paged for long content.
-- `lookup_api`: full docs for a scripting symbol, e.g. `api.connect`, `ctx.index`, `cavalry.Path`.
-- `get_outline`: list a page's sections, or list pages.
+It doesn't control Cavalry. Use it alongside Canva's official **Cavalry by Canva** MCP extension (Cavalry 2.8+), which does.
 
-## Setup
-The docs dump isn't committed, because this repo is public and the content belongs to Canva / Scene Group. Put a dump at `data/cavalry-docs.json`, shaped `{source, fetched, pageCount, pages:[{url, path, title, breadcrumbs, markdown}]}`, then:
+## Quick start
 ```bash
-npm install
-npm run build      # compiles TypeScript and builds data/sections.json
-npm test
+npm install && npm run build
+node dist/src/index.js --docs /path/to/cavalry-docs.json --check
 ```
+Then add it to Claude Desktop or Claude Code. See **[docs/SETUP.md](docs/SETUP.md)**.
 
-Claude Desktop / Claude Code config:
-```json
-{
-  "mcpServers": {
-    "cavalry-docs": { "command": "node", "args": ["/absolute/path/to/Cavalry-MCP/dist/src/index.js"] }
-  }
-}
+## Documentation
+| Guide | Contents |
+|---|---|
+| [docs/SETUP.md](docs/SETUP.md) | Install, run, connect to Claude Desktop / Claude Code, troubleshooting |
+| [docs/CAPABILITIES.md](docs/CAPABILITIES.md) | Every tool and prompt, what's indexed, limitations |
+| [docs/PROMPTING.md](docs/PROMPTING.md) | Detailed prompting guide with recipes and a Claude Project template |
+| [docs/mcp-design.md](docs/mcp-design.md) | Design notes and how this relates to the official Cavalry MCP |
+| [docs/cavalry-research.md](docs/cavalry-research.md) | Cavalry features, workflows, good and bad practice |
+| [docs/cavalry-ui-reference.md](docs/cavalry-ui-reference.md) | Condensed UI reference |
+
+## Development
+```bash
+npm test     # 12 tests; the ones that need the docs dump are skipped if it isn't found (set CAVALRY_DOCS)
 ```
-
-## Reference notes
-- [docs/cavalry-research.md](docs/cavalry-research.md): features, workflows, and good and bad practice.
-- [docs/cavalry-ui-reference.md](docs/cavalry-ui-reference.md): a condensed UI reference.
-
+Source: `src/sections.ts` (heading splitter), `src/search.ts` (BM25), `src/docs.ts` (lookup and paging), `src/validate.ts` (script checker), `src/index.ts` (MCP server).

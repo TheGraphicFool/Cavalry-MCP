@@ -4,13 +4,19 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import { existsSync } from "node:fs";
 import { CavalryDocs } from "../src/docs.js";
-import { createServer } from "../src/index.js";
+import { createServer, resolveDocsPath } from "../src/index.js";
+import { maskNonCode, validateScript } from "../src/validate.js";
 import { splitPage, symbolFromHeading, type DocPage } from "../src/sections.js";
 import { tokenize } from "../src/search.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const docs = CavalryDocs.fromSectionsFile(resolve(root, "data/sections.json"));
+// The docs dump is private (not committed). Tests that need it are skipped when it's absent.
+const dumpPath = process.env.CAVALRY_DOCS ?? resolve(root, "data/cavalry-docs.json");
+const hasDocs = existsSync(dumpPath);
+const docs = hasDocs ? CavalryDocs.fromDumpFile(dumpPath) : (undefined as unknown as CavalryDocs);
+const withDocs = { skip: hasDocs ? false : `docs dump not found at ${dumpPath}` };
 
 const page = (path: string, markdown: string): DocPage => ({
   url: `https://cavalry.studio/docs/${path}/`,
@@ -71,21 +77,21 @@ test("tokenize splits camelCase but keeps the whole word", () => {
   assert.deepEqual(tokenize("getCompLayers"), ["getcomplayers", "get", "comp", "layers"]);
 });
 
-test("index covers every page and splits the API Module by function", () => {
+test("index covers every page and splits the API Module by function", withDocs, () => {
   assert.equal(docs.pageCount, 534);
   const outline = docs.outline("tech-info/scripting/api-module")!;
   assert.ok(outline.filter((o) => o.symbol).length > 250);
   assert.ok(Math.max(...outline.map((o) => o.chars)) < 20000, "no API section should approach the 110k page size");
 });
 
-test("lookupSymbol resolves namespaced and bare names", () => {
+test("lookupSymbol resolves namespaced and bare names", withDocs, () => {
   assert.equal(docs.lookupSymbol("api.create")[0].id, "tech-info/scripting/api-module#create");
   assert.equal(docs.lookupSymbol("ctx.index")[0].id, "tech-info/scripting/context-module#index");
   assert.equal(docs.lookupSymbol("getMagicEasing")[0].module, "api");
   assert.ok(docs.lookupSymbol("macOS").length === 0);
 });
 
-test("resolve accepts urls with anchors and page ids, and pages long content", () => {
+test("resolve accepts urls with anchors and page ids, and pages long content", withDocs, () => {
   const byUrl = docs.resolve("https://cavalry.studio/docs/tech-info/scripting/api-module/#getMagicEasing");
   assert.equal(byUrl?.id, "tech-info/scripting/api-module#getmagiceasing");
   const wholePage = docs.resolve("tech-info/scripting/api-module")!;
@@ -96,7 +102,7 @@ test("resolve accepts urls with anchors and page ids, and pages long content", (
   assert.equal(second.offset, first.nextOffset);
 });
 
-test("search ranks the obvious section first", () => {
+test("search ranks the obvious section first", withDocs, () => {
   assert.equal(docs.search("getCompLayers")[0].id, "tech-info/scripting/api-module#getcomplayers");
   assert.equal(
     docs.search("lottie unsupported features")[0].id,
@@ -106,14 +112,20 @@ test("search ranks the obvious section first", () => {
   assert.ok(docs.search("keyframe", { area: "scripting" }).every((h) => /^(tech-info\/scripting|web-player)/.test(h.id)));
 });
 
-test("MCP server exposes the tools end to end", async () => {
+test("MCP server exposes the tools end to end", withDocs, async () => {
   const server = createServer(docs);
   const client = new Client({ name: "test", version: "0.0.0" });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
 
   const { tools } = await client.listTools();
-  assert.deepEqual(tools.map((t) => t.name).sort(), ["get_outline", "lookup_api", "read_doc", "search_docs"]);
+  assert.deepEqual(tools.map((t) => t.name).sort(), ["get_outline", "lookup_api", "read_doc", "search_docs", "validate_script"]);
+  const { prompts } = await client.listPrompts();
+  assert.deepEqual(prompts.map((p) => p.name).sort(), ["cavalry_explain", "cavalry_script", "cavalry_setup_plan"]);
+  const prompt = await client.getPrompt({ name: "cavalry_script", arguments: { task: "make a grid" } });
+  assert.match((prompt.messages[0].content as { text: string }).text, /validate_script/);
+  const check = await client.callTool({ name: "validate_script", arguments: { code: "api.creat('rectangle')" } });
+  assert.match((check.content as { text: string }[])[0].text, /api\.create/);
 
   const lookup = await client.callTool({ name: "lookup_api", arguments: { name: "api.connect" } });
   const lookupText = (lookup.content as { text: string }[])[0].text;
@@ -125,4 +137,44 @@ test("MCP server exposes the tools end to end", async () => {
   const missing = await client.callTool({ name: "read_doc", arguments: { ref: "does/not/exist" } });
   assert.equal(missing.isError, true);
   await client.close();
+});
+
+test("resolveDocsPath prefers --docs, then CAVALRY_DOCS, then the repo default", () => {
+  assert.equal(resolveDocsPath(["--docs", "/tmp/a.json"], { CAVALRY_DOCS: "/tmp/b.json" }), "/tmp/a.json");
+  assert.equal(resolveDocsPath([], { CAVALRY_DOCS: "/tmp/b.json" }), "/tmp/b.json");
+  assert.equal(resolveDocsPath([], {}), resolve(root, "data/cavalry-docs.json"));
+});
+
+test("maskNonCode blanks comments and strings but keeps positions", () => {
+  const code = 'api.get("api.fake") // api.nope\n/* api.x */ ctx.index';
+  const masked = maskNonCode(code);
+  assert.equal(masked.length, code.length);
+  assert.deepEqual([...masked.matchAll(/(api|ctx)\.(\w+)/g)].map((m) => m[0]), ["api.get", "ctx.index"]);
+});
+
+test("validateScript accepts the docs' own getting-started script", withDocs, () => {
+  const sample = docs.resolve("tech-info/scripting/scripting-getting-started")!.content;
+  const code = /```js\n([\s\S]*?)```/.exec(sample)![1];
+  const report = validateScript(docs, code, "editor");
+  assert.equal(report.ok, true, JSON.stringify(report.issues));
+  assert.ok(report.references.some((r) => r.name === "api.connect"));
+});
+
+test("validateScript flags invented members, wrong case and wrong context", withDocs, () => {
+  const invented = validateScript(docs, "var l = api.createLayer('rectangle');", "editor");
+  assert.equal(invented.ok, false);
+  assert.match(invented.issues[0].message, /not in the Cavalry docs/);
+  assert.equal(invented.issues[0].suggestions?.[0], "api.create");
+
+  const wrongCase = validateScript(docs, "api.getcomplayers(true);", "editor");
+  assert.deepEqual(wrongCase.issues[0].suggestions, ["api.getCompLayers"]);
+
+  const inLayer = validateScript(docs, "var i = ctx.index; api.create('null');", "layer");
+  assert.match(inLayer.issues[0].message, /api\.\* is not available in a JavaScript Layer/);
+
+  const editorCtx = validateScript(docs, "var i = ctx.index;", "editor");
+  assert.equal(editorCtx.ok, false);
+
+  const classes = validateScript(docs, "var c = new api.WebClient('https://x'); var b = new ui.Button('Go');", "editor");
+  assert.equal(classes.ok, true, JSON.stringify(classes.issues));
 });
